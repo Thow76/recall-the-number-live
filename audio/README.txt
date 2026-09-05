@@ -1,0 +1,15 @@
+Put the nine MP3 files for Recall the Number in this folder when you want fixed local audio.
+
+Expected filenames:
+
+01_Anita_is_at_the_supermarket_LOUD.mp3
+02_She_has_a_shopping_list_LOUD.mp3
+03_The_list_helps_her_to_do_the_shopping_LOUD.mp3
+04_It_helps_her_to_remember_what_she_needs_LOUD.mp3
+05_She_looks_at_her_list_when_she_shops_LOUD.mp3
+06_She_buys_milk_bread_and_bananas_LOUD.mp3
+07_A_shop_assistant_helps_Anita_to_find_rice_LOUD.mp3
+08_Anita_has_everything_on_her_list_in_the_basket_LOUD.mp3
+09_She_pays_at_the_self_checkout_LOUD.mp3
+
+For quick testing, the teacher page can choose all 9 MP3 files at once.

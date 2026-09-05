@@ -1,0 +1,14 @@
+{
+  "rules": {
+    "sessions": {
+      "$sessionCode": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "savedGames": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
