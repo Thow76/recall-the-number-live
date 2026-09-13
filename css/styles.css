@@ -57,10 +57,12 @@ select:focus-visible {
 
 .app {
   min-height: 100vh;
+  min-height: 100svh;
 }
 
 .screen {
   min-height: 100vh;
+  min-height: 100svh;
   padding: 28px;
 }
 
@@ -88,6 +90,32 @@ select:focus-visible {
 
 .student-card {
   width: min(620px, 100%);
+}
+
+.student-join-card,
+.student-wait-card,
+.student-final-card {
+  gap: 14px;
+}
+
+.student-join-card h1 {
+  font-size: clamp(2.2rem, 11vw, 4rem);
+  text-align: center;
+}
+
+.student-join-card .button-large {
+  width: 100%;
+}
+
+.session-field.is-prefilled {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.session-field.is-prefilled input {
+  min-height: 46px;
+  background: #f8fafb;
+  font-size: 1rem;
 }
 
 .section-label {
@@ -218,6 +246,131 @@ h2 {
   padding: 14px;
 }
 
+.teacher-setup-screen {
+  padding: 18px;
+}
+
+.teacher-setup {
+  display: grid;
+  gap: 14px;
+  width: min(1320px, 100%);
+  margin: 0 auto;
+}
+
+.setup-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.setup-header h1 {
+  margin: 8px 0 0;
+  font-size: clamp(2rem, 3.6vw, 3.5rem);
+}
+
+.setup-connection {
+  min-width: min(420px, 100%);
+  align-self: center;
+}
+
+.setup-access {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.72fr) minmax(190px, 220px) minmax(320px, 1.4fr);
+  align-items: stretch;
+  gap: 14px;
+  border: 2px solid #d5e8e6;
+  border-radius: 8px;
+  background: #f4fbfa;
+  padding: 14px;
+}
+
+.access-session,
+.access-qr,
+.access-link {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.access-session span,
+.access-qr span,
+.access-link span {
+  color: var(--muted);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.access-session .button {
+  width: fit-content;
+}
+
+.access-qr {
+  justify-items: center;
+}
+
+.qr-code {
+  display: grid;
+  width: clamp(168px, 15vw, 220px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.qr-code svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.access-link {
+  border-left: 2px solid #d5e8e6;
+  padding-left: 14px;
+}
+
+.access-link a {
+  overflow-wrap: anywhere;
+  color: var(--teal-dark);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.setup-workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.82fr) minmax(520px, 1.58fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.setup-sidebar,
+.setup-main {
+  display: grid;
+  gap: 12px;
+}
+
+.setup-main {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 14px;
+  box-shadow: 0 12px 28px rgba(23, 32, 51, 0.09);
+}
+
+.setup-title-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.setup-title-row .setup-actions {
+  justify-content: end;
+}
+
 .join-panel span,
 .join-panel strong {
   overflow-wrap: anywhere;
@@ -281,7 +434,7 @@ h2 {
 
 .sentence-setup textarea {
   width: 100%;
-  min-height: 220px;
+  min-height: 190px;
   resize: vertical;
   border: 2px solid var(--border);
   border-radius: 8px;
@@ -357,10 +510,107 @@ h2 {
 
 .teacher-screen {
   display: grid;
-  grid-template-rows: auto auto 1fr;
-  gap: 16px;
-  width: min(1480px, 100vw);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  width: min(1480px, 100%);
+  min-height: calc(100vh - 56px);
+  min-height: calc(100svh - 56px);
   margin: 0 auto;
+}
+
+.live-topbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(360px, 1.6fr) auto;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.live-title,
+.live-metrics,
+.live-actions {
+  min-width: 0;
+}
+
+.live-title {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.live-title .section-label {
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 0.76rem;
+}
+
+.live-title h1 {
+  font-size: clamp(1.55rem, 2.5vw, 2.35rem);
+}
+
+.live-progress {
+  gap: 5px;
+}
+
+.live-progress .progress-dot {
+  width: 10px;
+  height: 10px;
+  flex-basis: 10px;
+  border-width: 1px;
+}
+
+.live-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.live-metrics span {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 2px;
+  border: 2px solid #d5e8e6;
+  border-radius: 8px;
+  background: #f4fbfa;
+  padding: 7px 10px;
+}
+
+.live-metrics span.is-warning {
+  border-color: #f1b2b2;
+  background: var(--red-soft);
+  color: var(--red-dark);
+}
+
+.live-metrics em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.live-metrics strong {
+  overflow: hidden;
+  color: var(--teal-dark);
+  font-size: 1.05rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-metrics span.is-warning strong {
+  color: var(--red-dark);
+}
+
+.live-actions {
+  align-content: center;
+}
+
+.live-actions .button {
+  min-height: 36px;
 }
 
 .game-header,
@@ -383,6 +633,40 @@ h2 {
   flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
+}
+
+.student-topline,
+.student-round-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.student-name-pill,
+.student-round-strip > span,
+.student-score-badge {
+  display: inline-grid;
+  min-height: 42px;
+  align-items: center;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 900;
+}
+
+.student-name-pill,
+.student-round-strip > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.student-score-badge {
+  flex: 0 0 auto;
+  border: 2px solid #a6d8b5;
+  background: var(--green-soft);
+  color: var(--green-dark);
 }
 
 .session-code {
@@ -425,132 +709,161 @@ h2 {
 
 .teacher-grid {
   display: grid;
-  grid-template-columns: minmax(310px, 0.9fr) minmax(420px, 1.4fr) minmax(260px, 0.7fr);
-  gap: 18px;
+  grid-template-columns: minmax(220px, 0.78fr) minmax(320px, 1.32fr) minmax(210px, 0.74fr);
+  gap: 12px;
   min-height: 0;
+  align-items: stretch;
 }
 
 .control-panel,
 .chart-panel,
 .students-panel {
+  min-height: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
-  padding: 18px;
+  padding: 12px;
   box-shadow: var(--shadow);
 }
 
 .control-panel {
   display: grid;
-  align-content: start;
-  justify-items: center;
-  gap: 16px;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  align-content: stretch;
+  gap: 12px;
+}
+
+.control-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.control-actions .button-row {
+  display: grid;
+  gap: 10px;
+}
+
+.phase-pill {
+  display: inline-grid;
+  min-height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--teal-soft);
+  padding: 4px 10px;
+  color: var(--teal-dark);
+  font-size: 0.9rem;
+  font-weight: 900;
 }
 
 .play-button {
   display: grid;
-  width: clamp(96px, 11vw, 132px);
-  height: clamp(96px, 11vw, 132px);
+  width: clamp(76px, 8vw, 104px);
+  height: clamp(76px, 8vw, 104px);
   place-items: center;
   border: 0;
   border-radius: 999px;
   background: var(--red);
-  box-shadow: 0 12px 0 var(--red-dark);
+  box-shadow: 0 8px 0 var(--red-dark);
 }
 
 .play-triangle {
   width: 0;
   height: 0;
-  margin-left: 9px;
-  border-top: 25px solid transparent;
-  border-bottom: 25px solid transparent;
-  border-left: 39px solid #ffffff;
+  margin-left: 7px;
+  border-top: 20px solid transparent;
+  border-bottom: 20px solid transparent;
+  border-left: 31px solid #ffffff;
 }
 
 .audio-warning,
 .student-warning {
-  min-height: 42px;
+  min-height: 34px;
   margin: 0;
   border: 2px solid #f1b2b2;
   border-radius: 8px;
   background: var(--red-soft);
-  padding: 8px 12px;
+  padding: 6px 10px;
   color: var(--red-dark);
+  font-size: 0.95rem;
   font-weight: 800;
 }
 
 .audio-warning.is-empty {
-  visibility: hidden;
-}
-
-.round-status {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  width: 100%;
-}
-
-.round-status span {
-  display: grid;
-  min-height: 58px;
-  place-items: center;
-  border: 2px solid #d5e8e6;
-  border-radius: 8px;
+  border-color: #d5e8e6;
   background: #f4fbfa;
-  color: var(--teal-dark);
-  font-size: 1.25rem;
-  font-weight: 900;
+  color: var(--muted);
 }
 
 .sentence-reveal {
   display: grid;
   width: 100%;
-  min-height: 138px;
+  min-height: 96px;
   align-content: center;
   gap: 8px;
   border: 2px solid #a6d8b5;
   border-radius: 8px;
   background: var(--green-soft);
-  padding: 14px;
+  padding: 10px;
   text-align: center;
 }
 
 .sentence-reveal.is-empty {
-  visibility: hidden;
+  border-color: var(--border);
+  background: #f8fafb;
 }
 
 .sentence-reveal span {
   color: var(--muted);
+  font-size: 0.9rem;
   font-weight: 800;
 }
 
 .sentence-reveal strong {
-  font-size: clamp(1.25rem, 2vw, 2rem);
+  font-size: clamp(1.05rem, 1.7vw, 1.55rem);
   line-height: 1.15;
+}
+
+.chart-panel,
+.students-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+}
+
+.chart-heading span {
+  color: var(--teal-dark);
+  font-weight: 900;
+}
+
+.vote-chart {
+  min-height: 0;
+  overflow: auto;
 }
 
 .vote-row {
   display: grid;
-  grid-template-columns: 54px 1fr 42px;
+  grid-template-columns: 42px minmax(0, 1fr) 34px;
   align-items: center;
-  gap: 12px;
-  min-height: 46px;
-  margin-bottom: 10px;
+  gap: 8px;
+  min-height: 36px;
+  margin-bottom: 7px;
 }
 
 .vote-number {
   display: grid;
-  height: 46px;
+  height: 36px;
   place-items: center;
   border: 2px solid #91bbb8;
   border-radius: 8px;
   background: #ffffff;
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 900;
 }
 
 .vote-track {
-  height: 28px;
+  height: 22px;
   overflow: hidden;
   border-radius: 8px;
   background: #e8edf2;
@@ -599,6 +912,51 @@ h2 {
   color: var(--red-dark);
   font-size: 0.82rem;
   font-style: normal;
+}
+
+.students-panel .student-list {
+  align-content: start;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.students-panel .student-chip {
+  display: grid;
+  flex: 1 1 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  row-gap: 3px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.students-panel .student-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.students-panel .student-chip strong,
+.students-panel .student-chip small {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.students-panel .student-chip strong {
+  color: var(--teal-dark);
+}
+
+.students-panel .student-chip small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.students-panel .student-chip em {
+  justify-self: end;
 }
 
 .name-field {
@@ -677,10 +1035,21 @@ h2 {
 
 .student-play-screen {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  gap: 18px;
-  width: min(760px, 100vw);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 12px;
+  width: min(560px, 100%);
   margin: 0 auto;
+}
+
+.student-play-screen .student-header {
+  align-items: center;
+  gap: 10px;
+}
+
+.student-play-screen .student-actions .button {
+  min-height: 40px;
+  padding: 6px 10px;
+  font-size: 0.95rem;
 }
 
 .student-prompt {
@@ -688,7 +1057,7 @@ h2 {
 }
 
 .student-prompt h1 {
-  font-size: clamp(2.2rem, 9vw, 4.4rem);
+  font-size: clamp(2rem, 7vw, 3.2rem);
 }
 
 .student-prompt p {
@@ -701,8 +1070,10 @@ h2 {
 .student-number-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
   align-content: center;
+  width: min(100%, 440px);
+  margin: 0 auto;
 }
 
 .number-button {
@@ -810,13 +1181,14 @@ h2 {
 
 .student-feedback {
   display: grid;
-  min-height: 128px;
+  min-height: 86px;
   align-content: center;
-  gap: 8px;
+  justify-items: center;
+  gap: 6px;
   border: 2px solid var(--border);
   border-radius: 8px;
   background: #ffffff;
-  padding: 14px;
+  padding: 10px;
   text-align: center;
 }
 
@@ -835,6 +1207,34 @@ h2 {
 .student-feedback.is-revealed {
   border-color: #a6d8b5;
   background: var(--green-soft);
+}
+
+.student-feedback.is-wrong {
+  border-color: #f1b2b2;
+  background: var(--red-soft);
+}
+
+.student-feedback .student-score-badge {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 0.95rem;
+}
+
+.result-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--green);
+  color: #ffffff;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.student-feedback.is-wrong .result-mark {
+  background: var(--red);
 }
 
 .scoreboard {
@@ -891,7 +1291,40 @@ h2 {
 }
 
 @media (max-width: 960px) {
-  .teacher-grid {
+  .setup-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .setup-connection {
+    min-width: 0;
+  }
+
+  .setup-access {
+    grid-template-columns: minmax(190px, 0.75fr) minmax(168px, 200px);
+  }
+
+  .access-link {
+    grid-column: 1 / -1;
+    border-top: 2px solid #d5e8e6;
+    border-left: 0;
+    padding-top: 12px;
+    padding-left: 0;
+  }
+
+  .setup-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-sidebar {
+    order: 2;
+  }
+
+  .setup-main {
+    order: 1;
+  }
+
+  .setup-title-row {
     grid-template-columns: 1fr;
   }
 
@@ -900,11 +1333,203 @@ h2 {
     align-items: stretch;
     flex-direction: column;
   }
+
+  .live-topbar {
+    grid-template-columns: minmax(160px, 0.8fr) minmax(300px, 1.4fr);
+  }
+
+  .live-actions {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .live-actions .button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 780px) {
+  .teacher-screen {
+    min-height: auto;
+  }
+
+  .live-topbar,
+  .teacher-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .live-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .control-actions {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 540px) {
   .screen {
-    padding: 16px;
+    padding: 12px;
+  }
+
+  .student-screen {
+    padding: 14px;
+  }
+
+  .student-card {
+    padding: 18px;
+  }
+
+  .student-join-card,
+  .student-wait-card,
+  .student-final-card {
+    gap: 12px;
+  }
+
+  .student-play-screen {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .student-play-screen .student-header {
+    gap: 8px;
+  }
+
+  .student-round-strip,
+  .student-topline {
+    width: 100%;
+  }
+
+  .student-name-pill,
+  .student-round-strip > span,
+  .student-score-badge {
+    min-height: 38px;
+    padding: 5px 9px;
+    font-size: 0.95rem;
+  }
+
+  .student-play-screen .student-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+  }
+
+  .student-play-screen .student-actions .button {
+    min-width: 0;
+    min-height: 38px;
+  }
+
+  .student-prompt h1 {
+    font-size: 2rem;
+  }
+
+  .student-feedback {
+    min-height: 76px;
+    padding: 8px;
+  }
+
+  .student-feedback.is-revealed {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    column-gap: 8px;
+    row-gap: 2px;
+    text-align: left;
+  }
+
+  .student-feedback.is-revealed .result-mark {
+    grid-row: 1 / 4;
+  }
+
+  .student-feedback.is-revealed p {
+    font-size: 0.95rem;
+  }
+
+  .student-feedback strong {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 1.05rem;
+    line-height: 1.1;
+  }
+
+  .student-feedback .student-score-badge {
+    min-height: 28px;
+    padding: 2px 8px;
+    font-size: 0.85rem;
+  }
+
+  .result-mark {
+    width: 36px;
+    height: 36px;
+    font-size: 1.8rem;
+  }
+
+  .teacher-setup-screen {
+    padding: 10px;
+  }
+
+  .teacher-setup {
+    gap: 10px;
+  }
+
+  .setup-header {
+    gap: 8px;
+  }
+
+  .setup-header h1 {
+    margin-top: 6px;
+    font-size: 2rem;
+  }
+
+  .teacher-setup .section-label {
+    min-height: 34px;
+    padding: 0 14px;
+  }
+
+  .setup-connection {
+    padding: 6px 10px;
+  }
+
+  .setup-access {
+    grid-template-columns: minmax(0, 1fr) 128px;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .access-session,
+  .access-qr,
+  .access-link {
+    gap: 6px;
+  }
+
+  .teacher-setup .session-code {
+    min-height: 48px;
+    padding: 4px 12px;
+    font-size: 2.25rem;
+  }
+
+  .access-qr {
+    justify-items: center;
+  }
+
+  .access-link {
+    grid-column: 1 / -1;
+  }
+
+  .qr-code {
+    width: 128px;
+    padding: 6px;
+  }
+
+  .setup-main {
+    padding: 10px;
+  }
+
+  .setup-title-row {
+    gap: 10px;
   }
 
   .student-number-grid {
@@ -916,10 +1541,22 @@ h2 {
     width: 100%;
   }
 
-  .setup-actions,
   .load-game-control {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .setup-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .setup-actions .button-large {
+    min-width: 0;
+    min-height: 56px;
+    padding: 8px 10px;
+    font-size: 1.05rem;
   }
 
   .button-row .button,

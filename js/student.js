@@ -6,9 +6,10 @@
   const app = document.getElementById("app");
   const params = new URLSearchParams(window.location.search);
   const studentSessionKey = "recallNumberLiveLocal.studentSessionCode";
+  const urlSessionCode = cleanSessionCode(params.get("session") || "");
 
   const state = {
-    sessionCode: cleanSessionCode(params.get("session") || sessionStorage.getItem(studentSessionKey) || ""),
+    sessionCode: cleanSessionCode(urlSessionCode || sessionStorage.getItem(studentSessionKey) || ""),
     playerId: sessionStorage.getItem("recallNumberLiveLocal.playerId") || "",
     name: "",
     rememberedName: sessionStorage.getItem("recallNumberLiveLocal.name") || "",
@@ -109,15 +110,40 @@
     return activeQuestions.find((question) => question.number === snapshot.currentNumber);
   }
 
-  function myScore(snapshot) {
+  function totalRounds(snapshot) {
+    return snapshot && snapshot.totalRounds ? snapshot.totalRounds : questions.length;
+  }
+
+  function revealedRoundCount(snapshot) {
+    if (!snapshot || !Array.isArray(snapshot.randomOrder)) {
+      return 0;
+    }
+    if (snapshot.phase === "finished") {
+      return Math.min(totalRounds(snapshot), snapshot.randomOrder.length);
+    }
+    return Math.min(
+      totalRounds(snapshot),
+      snapshot.roundIndex + (snapshot.revealed ? 1 : 0)
+    );
+  }
+
+  function studentScore(snapshot) {
     if (!snapshot || !snapshot.randomOrder || !snapshot.votes) {
       return 0;
     }
-    return snapshot.randomOrder.reduce((score, correctNumber, roundIndex) => {
+    return snapshot.randomOrder.slice(0, revealedRoundCount(snapshot)).reduce((score, correctNumber, roundIndex) => {
       const roundVotes = snapshot.votes[String(roundIndex)] || {};
       const vote = roundVotes[state.playerId];
       return vote && vote.answer === correctNumber ? score + 1 : score;
     }, 0);
+  }
+
+  function scoreLabel(snapshot) {
+    return `${studentScore(snapshot)} / ${totalRounds(snapshot)}`;
+  }
+
+  function renderScoreBadge(snapshot) {
+    return `<span class="student-score-badge" aria-label="Score ${scoreLabel(snapshot)}">Score ${scoreLabel(snapshot)}</span>`;
   }
 
   function joinGame() {
@@ -259,22 +285,22 @@
   }
 
   function renderName(message) {
+    const sessionClass = urlSessionCode ? "name-field session-field is-prefilled" : "name-field session-field";
     app.innerHTML = `
       <section class="screen student-screen">
-        <div class="student-card">
-          <p class="section-label">Student</p>
-          <h1>Join the game</h1>
-          <p class="connection-note">${escapeHtml(connectionLabel())}</p>
+        <div class="student-card student-join-card">
+          <h1>RECALL THE NUMBER</h1>
           <label class="name-field">
-            Session code
-            <input id="sessionCode" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" value="${escapeHtml(state.sessionCode)}">
-          </label>
-          <label class="name-field">
-            Your name
+            Name
             <input id="studentName" type="text" autocomplete="name" value="${escapeHtml(state.rememberedName)}">
+          </label>
+          <label class="${sessionClass}">
+            Session
+            <input id="sessionCode" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" value="${escapeHtml(state.sessionCode)}">
           </label>
           ${message ? `<p class="student-warning">${escapeHtml(message)}</p>` : ""}
           <button class="button button-primary button-large" type="button" data-action="join">Join</button>
+          <p class="connection-note">${escapeHtml(connectionLabel())}</p>
         </div>
       </section>
     `;
@@ -286,13 +312,17 @@
   }
 
   function renderWaiting() {
+    const snapshot = currentSnapshot();
     app.innerHTML = `
       <section class="screen student-screen">
-        <div class="student-card">
-          <p class="section-label">Student</p>
-          <h1>Hello, ${escapeHtml(state.name)}</h1>
+        <div class="student-card student-wait-card">
+          <div class="student-topline">
+            <span class="student-name-pill">${escapeHtml(state.name)}</span>
+            ${renderScoreBadge(snapshot)}
+          </div>
+          <h1>Joined</h1>
           <p class="session-note">Session ${escapeHtml(state.sessionCode)}</p>
-          <p class="subtitle">Waiting for the teacher to start.</p>
+          <p class="subtitle">Waiting...</p>
           ${state.connectionMessage ? `<p class="student-warning">${escapeHtml(state.connectionMessage)}</p>` : `<p class="connection-note">${escapeHtml(connectionLabel())}</p>`}
           <div class="button-row">
             <button class="button button-light" type="button" data-action="change-name">Change name</button>
@@ -332,15 +362,14 @@
       return;
     }
     if (snapshot.phase === "finished") {
-      const score = myScore(snapshot);
+      const score = studentScore(snapshot);
       app.innerHTML = `
         <section class="screen student-screen">
-          <div class="student-card">
-            <p class="section-label">Student</p>
+          <div class="student-card student-final-card">
             <h1>Score</h1>
             <div class="student-score">
               <strong>${score}</strong>
-              <span>/ ${snapshot.totalRounds}</span>
+              <span>/ ${totalRounds(snapshot)}</span>
             </div>
             <p class="subtitle">Thank you, ${escapeHtml(state.name)}.</p>
             <button class="button button-danger" type="button" data-action="leave">Leave game</button>
@@ -352,10 +381,17 @@
 
     const vote = currentVote();
     const question = currentQuestion();
+    const isRevealed = snapshot.revealed && question;
+    const isCorrect = Boolean(isRevealed && vote && vote.answer === snapshot.currentNumber);
+    const resultClass = isRevealed ? (isCorrect ? "is-correct" : "is-wrong") : "";
+    const resultIcon = isCorrect ? "&#10003;" : "&times;";
     app.innerHTML = `
       <section class="screen student-play-screen">
         <header class="student-header">
-          <p class="section-label">Round ${snapshot.roundIndex + 1} of ${snapshot.totalRounds}</p>
+          <div class="student-round-strip">
+            <span>Round ${snapshot.roundIndex + 1} / ${totalRounds(snapshot)}</span>
+            ${renderScoreBadge(snapshot)}
+          </div>
           <div class="student-actions">
             <button class="button button-light" type="button" data-action="change-name">${escapeHtml(state.name)}</button>
             <button class="button button-danger" type="button" data-action="leave">Leave</button>
@@ -363,8 +399,7 @@
         </header>
 
         <section class="student-prompt">
-          <h1>Which number is it?</h1>
-          <p>${vote ? "Answer sent. Wait for the teacher." : "Tap one number."}</p>
+          <h1>${vote ? `Sent ${vote.answer}` : "Tap number"}</h1>
         </section>
 
         <div class="student-number-grid">
@@ -376,18 +411,21 @@
             ? `<section class="confirm-box" role="dialog" aria-label="Confirm answer">
                 <strong>${state.pendingAnswer}</strong>
                 <div class="confirm-actions">
-                  <button class="confirm-button is-cancel" type="button" data-action="cancel-answer" aria-label="Change answer">X</button>
-                  <button class="confirm-button is-send" type="button" data-action="send-answer" aria-label="Send answer">OK</button>
+                  <button class="confirm-button is-cancel" type="button" data-action="cancel-answer" aria-label="Change answer">&times;</button>
+                  <button class="confirm-button is-send" type="button" data-action="send-answer" aria-label="Send answer">&#10003;</button>
                 </div>
               </section>`
             : ""
         }
 
-        <section class="student-feedback ${snapshot.revealed ? "is-revealed" : ""}">
+        <section class="student-feedback ${snapshot.revealed ? "is-revealed" : ""} ${resultClass}">
           ${
-            snapshot.revealed && question
-              ? `<p>The answer was sentence ${snapshot.currentNumber}.</p><strong>${escapeHtml(question.sentence)}</strong>`
-              : `<p>${vote ? `You chose ${vote.answer}.` : "Listening..."}</p>`
+            isRevealed
+              ? `<div class="result-mark" aria-label="${isCorrect ? "Correct" : "Not correct"}">${resultIcon}</div>
+                 <p>Answer ${snapshot.currentNumber}</p>
+                 <strong>${escapeHtml(question.sentence)}</strong>
+                 ${renderScoreBadge(snapshot)}`
+              : `<p>${vote ? "Wait..." : "Listen..."}</p>`
           }
           ${state.connectionMessage ? `<p class="student-warning">${escapeHtml(state.connectionMessage)}</p>` : ""}
         </section>

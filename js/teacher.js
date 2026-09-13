@@ -52,6 +52,327 @@
       .replace(/'/g, "&#039;");
   }
 
+  function escapeAttribute(value) {
+    return escapeHtml(value).replace(/`/g, "&#096;");
+  }
+
+  function makeQrSvg(value) {
+    const matrix = makeQrMatrix(value);
+    const quiet = 4;
+    const size = matrix.length + quiet * 2;
+    const cells = [];
+    matrix.forEach((row, y) => {
+      row.forEach((isDark, x) => {
+        if (isDark) {
+          cells.push(`M${x + quiet},${y + quiet}h1v1h-1z`);
+        }
+      });
+    });
+
+    return `
+      <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="QR code for ${escapeAttribute(value)}">
+        <rect width="${size}" height="${size}" fill="#ffffff"></rect>
+        <path d="${cells.join("")}" fill="#172033"></path>
+      </svg>
+    `;
+  }
+
+  function makeQrMatrix(value) {
+    const version = 6;
+    const size = version * 4 + 17;
+    const dataCodewords = 136;
+    const errorCodewords = 18;
+    const blockCount = 2;
+    const modules = Array.from({ length: size }, () => Array(size).fill(false));
+    const isFunction = Array.from({ length: size }, () => Array(size).fill(false));
+    const data = qrDataCodewords(value, dataCodewords);
+    const blocks = [];
+
+    for (let block = 0; block < blockCount; block += 1) {
+      const start = block * 68;
+      const blockData = data.slice(start, start + 68);
+      blocks.push({
+        data: blockData,
+        ecc: reedSolomonRemainder(blockData, errorCodewords)
+      });
+    }
+
+    const codewords = [];
+    for (let index = 0; index < 68; index += 1) {
+      blocks.forEach((block) => codewords.push(block.data[index]));
+    }
+    for (let index = 0; index < errorCodewords; index += 1) {
+      blocks.forEach((block) => codewords.push(block.ecc[index]));
+    }
+
+    drawFunctionPatterns(modules, isFunction, version);
+
+    let bestModules = null;
+    let bestMask = 0;
+    let bestPenalty = Infinity;
+    for (let mask = 0; mask < 8; mask += 1) {
+      const trial = modules.map((row) => row.slice());
+      drawCodewords(trial, isFunction, codewords, mask);
+      drawFormatBits(trial, isFunction, mask);
+      const penalty = qrPenalty(trial);
+      if (penalty < bestPenalty) {
+        bestPenalty = penalty;
+        bestMask = mask;
+        bestModules = trial;
+      }
+    }
+
+    drawFormatBits(bestModules, isFunction, bestMask);
+    return bestModules;
+  }
+
+  function qrDataCodewords(value, maxCodewords) {
+    const bytes = Array.from(new TextEncoder().encode(value));
+    const bits = [];
+    appendBits(bits, 0x4, 4);
+    appendBits(bits, bytes.length, 8);
+    bytes.forEach((byte) => appendBits(bits, byte, 8));
+    if (bits.length > maxCodewords * 8) {
+      throw new Error("Student URL is too long for the setup QR code.");
+    }
+    appendBits(bits, 0, Math.min(4, maxCodewords * 8 - bits.length));
+    while (bits.length % 8) {
+      bits.push(0);
+    }
+
+    const codewords = [];
+    for (let index = 0; index < bits.length; index += 8) {
+      let codeword = 0;
+      for (let offset = 0; offset < 8; offset += 1) {
+        codeword = (codeword << 1) | bits[index + offset];
+      }
+      codewords.push(codeword);
+    }
+    for (let pad = 0; codewords.length < maxCodewords; pad += 1) {
+      codewords.push(pad % 2 ? 0x11 : 0xec);
+    }
+    return codewords;
+  }
+
+  function appendBits(bits, value, length) {
+    for (let index = length - 1; index >= 0; index -= 1) {
+      bits.push((value >>> index) & 1);
+    }
+  }
+
+  function reedSolomonRemainder(data, degree) {
+    const generator = reedSolomonGenerator(degree);
+    const result = Array(degree).fill(0);
+    data.forEach((byte) => {
+      const factor = byte ^ result.shift();
+      result.push(0);
+      generator.forEach((coefficient, index) => {
+        result[index] ^= gfMultiply(coefficient, factor);
+      });
+    });
+    return result;
+  }
+
+  function reedSolomonGenerator(degree) {
+    let result = [1];
+    for (let index = 0; index < degree; index += 1) {
+      const next = Array(result.length + 1).fill(0);
+      result.forEach((coefficient, position) => {
+        next[position] ^= gfMultiply(coefficient, 1);
+        next[position + 1] ^= gfMultiply(coefficient, gfPow(2, index));
+      });
+      result = next;
+    }
+    return result.slice(1);
+  }
+
+  function gfPow(value, power) {
+    let result = 1;
+    for (let index = 0; index < power; index += 1) {
+      result = gfMultiply(result, value);
+    }
+    return result;
+  }
+
+  function gfMultiply(left, right) {
+    let result = 0;
+    for (let index = 0; index < 8; index += 1) {
+      if ((right & 1) !== 0) {
+        result ^= left;
+      }
+      const carry = left & 0x80;
+      left = (left << 1) & 0xff;
+      if (carry) {
+        left ^= 0x1d;
+      }
+      right >>>= 1;
+    }
+    return result;
+  }
+
+  function drawFunctionPatterns(modules, isFunction, version) {
+    const size = modules.length;
+    drawFinderPattern(modules, isFunction, 3, 3);
+    drawFinderPattern(modules, isFunction, size - 4, 3);
+    drawFinderPattern(modules, isFunction, 3, size - 4);
+
+    for (let index = 8; index < size - 8; index += 1) {
+      setFunctionModule(modules, isFunction, index, 6, index % 2 === 0);
+      setFunctionModule(modules, isFunction, 6, index, index % 2 === 0);
+    }
+
+    [6, 34].forEach((x) => {
+      [6, 34].forEach((y) => {
+        if (!isFunction[y][x]) {
+          drawAlignmentPattern(modules, isFunction, x, y);
+        }
+      });
+    });
+
+    drawFormatBits(modules, isFunction, 0);
+    setFunctionModule(modules, isFunction, 8, version * 4 + 9, true);
+  }
+
+  function drawFinderPattern(modules, isFunction, centerX, centerY) {
+    for (let y = -4; y <= 4; y += 1) {
+      for (let x = -4; x <= 4; x += 1) {
+        const distance = Math.max(Math.abs(x), Math.abs(y));
+        const moduleX = centerX + x;
+        const moduleY = centerY + y;
+        if (moduleX >= 0 && moduleX < modules.length && moduleY >= 0 && moduleY < modules.length) {
+          setFunctionModule(modules, isFunction, moduleX, moduleY, distance !== 2 && distance !== 4);
+        }
+      }
+    }
+  }
+
+  function drawAlignmentPattern(modules, isFunction, centerX, centerY) {
+    for (let y = -2; y <= 2; y += 1) {
+      for (let x = -2; x <= 2; x += 1) {
+        const distance = Math.max(Math.abs(x), Math.abs(y));
+        setFunctionModule(modules, isFunction, centerX + x, centerY + y, distance !== 1);
+      }
+    }
+  }
+
+  function setFunctionModule(modules, isFunction, x, y, isDark) {
+    modules[y][x] = isDark;
+    isFunction[y][x] = true;
+  }
+
+  function drawCodewords(modules, isFunction, codewords, mask) {
+    const size = modules.length;
+    let bitIndex = 0;
+    let upward = true;
+    for (let right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) {
+        right -= 1;
+      }
+      for (let vertical = 0; vertical < size; vertical += 1) {
+        const y = upward ? size - 1 - vertical : vertical;
+        for (let offset = 0; offset < 2; offset += 1) {
+          const x = right - offset;
+          if (!isFunction[y][x]) {
+            const bit = bitIndex < codewords.length * 8
+              ? (codewords[bitIndex >>> 3] >>> (7 - (bitIndex & 7))) & 1
+              : 0;
+            modules[y][x] = Boolean(bit ^ maskCondition(mask, x, y));
+            bitIndex += 1;
+          }
+        }
+      }
+      upward = !upward;
+    }
+  }
+
+  function maskCondition(mask, x, y) {
+    if (mask === 0) return (x + y) % 2 === 0;
+    if (mask === 1) return y % 2 === 0;
+    if (mask === 2) return x % 3 === 0;
+    if (mask === 3) return (x + y) % 3 === 0;
+    if (mask === 4) return (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0;
+    if (mask === 5) return ((x * y) % 2) + ((x * y) % 3) === 0;
+    if (mask === 6) return (((x * y) % 2) + ((x * y) % 3)) % 2 === 0;
+    return (((x + y) % 2) + ((x * y) % 3)) % 2 === 0;
+  }
+
+  function drawFormatBits(modules, isFunction, mask) {
+    const size = modules.length;
+    const bits = formatBits(mask);
+    for (let index = 0; index <= 5; index += 1) {
+      setFunctionModule(modules, isFunction, 8, index, getBit(bits, index));
+    }
+    setFunctionModule(modules, isFunction, 8, 7, getBit(bits, 6));
+    setFunctionModule(modules, isFunction, 8, 8, getBit(bits, 7));
+    setFunctionModule(modules, isFunction, 7, 8, getBit(bits, 8));
+    for (let index = 9; index < 15; index += 1) {
+      setFunctionModule(modules, isFunction, 14 - index, 8, getBit(bits, index));
+    }
+    for (let index = 0; index < 8; index += 1) {
+      setFunctionModule(modules, isFunction, size - 1 - index, 8, getBit(bits, index));
+    }
+    for (let index = 8; index < 15; index += 1) {
+      setFunctionModule(modules, isFunction, 8, size - 15 + index, getBit(bits, index));
+    }
+    setFunctionModule(modules, isFunction, 8, size - 8, true);
+  }
+
+  function formatBits(mask) {
+    const data = (1 << 3) | mask;
+    let remainder = data;
+    for (let index = 0; index < 10; index += 1) {
+      remainder = (remainder << 1) ^ (((remainder >>> 9) & 1) ? 0x537 : 0);
+    }
+    return ((data << 10) | remainder) ^ 0x5412;
+  }
+
+  function getBit(value, index) {
+    return Boolean((value >>> index) & 1);
+  }
+
+  function qrPenalty(modules) {
+    const size = modules.length;
+    let penalty = 0;
+
+    for (let y = 0; y < size; y += 1) {
+      penalty += linePenalty(modules[y]);
+    }
+    for (let x = 0; x < size; x += 1) {
+      penalty += linePenalty(modules.map((row) => row[x]));
+    }
+
+    for (let y = 0; y < size - 1; y += 1) {
+      for (let x = 0; x < size - 1; x += 1) {
+        const color = modules[y][x];
+        if (color === modules[y][x + 1] && color === modules[y + 1][x] && color === modules[y + 1][x + 1]) {
+          penalty += 3;
+        }
+      }
+    }
+
+    const darkCount = modules.flat().filter(Boolean).length;
+    penalty += Math.floor(Math.abs(darkCount * 20 - size * size * 10) / (size * size)) * 10;
+    return penalty;
+  }
+
+  function linePenalty(line) {
+    let penalty = 0;
+    let runColor = line[0];
+    let runLength = 1;
+    for (let index = 1; index <= line.length; index += 1) {
+      if (index < line.length && line[index] === runColor) {
+        runLength += 1;
+      } else {
+        if (runLength >= 5) {
+          penalty += runLength - 2;
+        }
+        runColor = line[index];
+        runLength = 1;
+      }
+    }
+    return penalty;
+  }
+
   function shuffleNumbers() {
     const values = questions.map((question) => question.number);
     for (let index = values.length - 1; index > 0; index -= 1) {
@@ -505,6 +826,7 @@
     state.audioWarning = "";
     publish();
     render();
+    window.scrollTo(0, 0);
   }
 
   function resetCurrentVotes() {
@@ -565,12 +887,20 @@
     return Object.keys(currentVotes()).length;
   }
 
-  function playerScore(playerId) {
-    return state.randomOrder.reduce((score, correctNumber, roundIndex) => {
+  function playerScoreThroughRound(playerId, maxRoundIndex) {
+    if (maxRoundIndex < 0) {
+      return 0;
+    }
+
+    return state.randomOrder.slice(0, maxRoundIndex + 1).reduce((score, correctNumber, roundIndex) => {
       const roundVotes = state.votes[String(roundIndex)] || {};
       const vote = roundVotes[playerId];
       return vote && vote.answer === correctNumber ? score + 1 : score;
     }, 0);
+  }
+
+  function playerScore(playerId) {
+    return playerScoreThroughRound(playerId, state.randomOrder.length - 1);
   }
 
   function scoreRows() {
@@ -581,6 +911,11 @@
         score: playerScore(player.id)
       }))
       .sort((left, right) => right.score - left.score || left.name.localeCompare(right.name));
+  }
+
+  function visiblePlayerScore(playerId) {
+    const lastVisibleRound = state.revealed ? state.roundIndex : state.roundIndex - 1;
+    return playerScoreThroughRound(playerId, lastVisibleRound);
   }
 
   function removePlayer(playerId) {
@@ -625,77 +960,94 @@
   }
 
   function studentUrl() {
-    const href = window.location.href.replace(/teacher\.html.*$/, `student.html?session=${state.sessionCode}`);
-    return href;
+    const baseHref = window.location.href === "about:srcdoc" ? document.baseURI : window.location.href;
+    const url = new URL("student.html", baseHref);
+    url.search = "";
+    url.searchParams.set("session", state.sessionCode);
+    return url.href;
   }
 
   function renderSetup() {
+    const joinUrl = studentUrl();
     app.innerHTML = `
-      <section class="screen start-screen">
-        <div class="start-panel">
-          <p class="section-label">Teacher</p>
-          <h1>RECALL THE NUMBER LIVE</h1>
-          <p class="subtitle">Open the student page in another tab to test live voting.</p>
+      <section class="screen teacher-setup-screen">
+        <div class="teacher-setup">
+          <header class="setup-header">
+            <div>
+              <p class="section-label">Teacher</p>
+              <h1>Recall the Number Live</h1>
+            </div>
+            <div class="connection-strip setup-connection ${state.connectionMessage ? "is-warning" : ""}">
+              <span>${escapeHtml(connectionLabel())}</span>
+              ${state.connectionMessage ? `<strong>${escapeHtml(state.connectionMessage)}</strong>` : `<strong>Ready</strong>`}
+            </div>
+          </header>
 
-          <section class="join-panel" aria-label="Student joining details">
-            <span>Connection</span>
-            <strong>${escapeHtml(connectionLabel())}</strong>
-            ${state.connectionMessage ? `<p class="connection-warning">${escapeHtml(state.connectionMessage)}</p>` : ""}
-          </section>
-
-          <section class="join-panel" aria-label="Student joining details">
-            <span>Student page</span>
-            <strong>${escapeHtml(studentUrl())}</strong>
-          </section>
-
-          <section class="join-panel" aria-label="Session code">
-            <div class="panel-heading">
+          <section class="setup-access" aria-label="Student joining details">
+            <div class="access-session">
               <span>Session code</span>
+              <strong class="session-code">${escapeHtml(state.sessionCode)}</strong>
               <button class="button button-light button-small" type="button" data-action="new-session">New session</button>
             </div>
-            <strong class="session-code">${escapeHtml(state.sessionCode)}</strong>
-          </section>
-
-          <section class="join-panel" aria-label="Game title">
-            <label class="name-field compact-field">
-              Game title
-              <input id="gameTitle" type="text" value="${escapeHtml(state.gameTitle)}">
-            </label>
-          </section>
-
-          <section class="library-panel ${state.savedGamesStatus === "ready" ? "is-ready" : ""} ${state.savedGamesStatus === "warning" ? "is-warning" : ""}" aria-label="Load saved text game">
-            <div class="panel-heading">
-              <span>Load saved game</span>
+            <div class="access-qr">
+              <div class="qr-code">${makeQrSvg(joinUrl)}</div>
+              <span>Scan to join</span>
             </div>
-            ${renderSavedGames()}
-            <p>${state.savedGamesMessage ? escapeHtml(state.savedGamesMessage) : "Saved games are title and sentence text only. Audio files are selected separately."}</p>
-          </section>
-
-          <section class="join-panel roster-panel" aria-label="Joined students">
-            <div class="panel-heading">
-              <span>Joined students</span>
-              <button class="button button-light button-small" type="button" data-action="clear-students" ${playerCount() ? "" : "disabled"}>Clear students</button>
+            <div class="access-link">
+              <span>Student link</span>
+              <a href="${escapeAttribute(joinUrl)}" target="_blank" rel="noopener">${escapeHtml(joinUrl)}</a>
             </div>
-            ${renderStudentList()}
           </section>
 
-          <section class="audio-setup ${state.audioUploadStatus === "ready" ? "is-ready" : ""} ${state.audioUploadStatus === "warning" ? "is-warning" : ""}" aria-label="Audio setup">
-            <label class="upload-button">
-              Choose audio files
-              <input id="audioUpload" class="file-input" type="file" accept="audio/*,.mp3" multiple>
-            </label>
-            <p>${state.audioUploadMessage ? escapeHtml(state.audioUploadMessage) : "Choose all 9 MP3 files here, or use files already in the audio folder."}</p>
-          </section>
+          <div class="setup-workspace">
+            <aside class="setup-sidebar">
+              <section class="library-panel ${state.savedGamesStatus === "ready" ? "is-ready" : ""} ${state.savedGamesStatus === "warning" ? "is-warning" : ""}" aria-label="Load saved text game">
+                <div class="panel-heading">
+                  <span>Load saved game</span>
+                </div>
+                ${renderSavedGames()}
+                <p>${state.savedGamesMessage ? escapeHtml(state.savedGamesMessage) : "Saved games keep titles and sentences. Audio is selected separately."}</p>
+              </section>
 
-          <section class="sentence-setup ${state.sentenceStatus === "ready" ? "is-ready" : ""} ${state.sentenceStatus === "warning" ? "is-warning" : ""}" aria-label="Sentence setup">
-            <label class="sentence-label" for="sentenceList">Sentences</label>
-            <textarea id="sentenceList" rows="9" spellcheck="true">${escapeHtml(state.sentenceDraft)}</textarea>
-            <p>${state.sentenceMessage ? escapeHtml(state.sentenceMessage) : "Enter one sentence per line, in the same order as the audio files."}</p>
-          </section>
+              <section class="join-panel roster-panel" aria-label="Joined students">
+                <div class="panel-heading">
+                  <span>Joined students</span>
+                  <button class="button button-light button-small" type="button" data-action="clear-students" ${playerCount() ? "" : "disabled"}>Clear students</button>
+                </div>
+                ${renderStudentList()}
+              </section>
+            </aside>
 
-          <div class="setup-actions">
-            <button class="button button-light button-large" type="button" data-action="save-text-game">Save Text Game</button>
-            <button class="button button-primary button-large" type="button" data-action="start">Start Live Game</button>
+            <section class="setup-main" aria-label="Game setup">
+              <div class="setup-title-row">
+                <label class="name-field compact-field">
+                  Game title
+                  <input id="gameTitle" type="text" value="${escapeHtml(state.gameTitle)}">
+                </label>
+                <div class="setup-actions">
+                  <button class="button button-light button-large" type="button" data-action="save-text-game">Save Text Game</button>
+                  <button class="button button-primary button-large" type="button" data-action="start">Start Live Game</button>
+                </div>
+              </div>
+
+              <section class="audio-setup ${state.audioUploadStatus === "ready" ? "is-ready" : ""} ${state.audioUploadStatus === "warning" ? "is-warning" : ""}" aria-label="Audio setup">
+                <div class="panel-heading">
+                  <span>Audio files</span>
+                  <label class="upload-button">
+                    Choose files
+                    <input id="audioUpload" class="file-input" type="file" accept="audio/*,.mp3" multiple>
+                  </label>
+                </div>
+                <p>${state.audioUploadMessage ? escapeHtml(state.audioUploadMessage) : "Choose all 9 MP3 files, or use the files already in the audio folder."}</p>
+              </section>
+
+              <section class="sentence-setup ${state.sentenceStatus === "ready" ? "is-ready" : ""} ${state.sentenceStatus === "warning" ? "is-warning" : ""}" aria-label="Sentence setup">
+                <label class="sentence-label" for="sentenceList">Sentences</label>
+                <textarea id="sentenceList" rows="9" spellcheck="true">${escapeHtml(state.sentenceDraft)}</textarea>
+                <p>${state.sentenceMessage ? escapeHtml(state.sentenceMessage) : "Enter one sentence per line, in the same order as the audio files."}</p>
+              </section>
+
+            </section>
           </div>
         </div>
       </section>
@@ -740,36 +1092,46 @@
   function renderChart() {
     const counts = voteCounts();
     const max = Math.max(1, ...Object.values(counts));
-    return questions.map((question) => {
-      const count = counts[question.number] || 0;
-      const width = Math.max(4, Math.round((count / max) * 100));
-      const correctClass = state.revealed && question.number === currentNumber() ? "is-correct" : "";
-      return `
-        <div class="vote-row ${correctClass}">
-          <span class="vote-number">${question.number}</span>
-          <div class="vote-track">
-            <div class="vote-bar" style="width:${width}%"></div>
-          </div>
-          <strong>${count}</strong>
-        </div>
-      `;
-    }).join("");
+    return `
+      <div class="vote-chart">
+        ${questions.map((question) => {
+          const count = counts[question.number] || 0;
+          const width = Math.max(4, Math.round((count / max) * 100));
+          const correctClass = state.revealed && question.number === currentNumber() ? "is-correct" : "";
+          return `
+            <div class="vote-row ${correctClass}">
+              <span class="vote-number">${question.number}</span>
+              <div class="vote-track">
+                <div class="vote-bar" style="width:${width}%"></div>
+              </div>
+              <strong>${count}</strong>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
   }
 
-  function renderStudentList() {
+  function renderStudentList(showLiveScores = false) {
     const players = Object.values(state.players || {});
     if (!players.length) {
       return `<p class="muted">No students joined yet.</p>`;
     }
 
+    const votes = currentVotes();
     return `
       <div class="student-list">
-        ${players.map((player) => `
-          <button class="student-chip" type="button" data-remove-player="${escapeHtml(player.id)}" aria-label="Remove ${escapeHtml(player.name)}">
-            <span>${escapeHtml(player.name)}</span>
-            <em>Remove</em>
-          </button>
-        `).join("")}
+        ${players.map((player) => {
+          const score = visiblePlayerScore(player.id);
+          const voteStatus = votes[player.id] ? "Voted" : "Waiting";
+          return `
+            <button class="student-chip ${showLiveScores ? "has-score" : ""}" type="button" data-remove-player="${escapeHtml(player.id)}" aria-label="Remove ${escapeHtml(player.name)}">
+              <span class="student-name">${escapeHtml(player.name)}</span>
+              ${showLiveScores ? `<strong>${score} / ${questions.length}</strong><small>${voteStatus}</small>` : ""}
+              <em>Remove</em>
+            </button>
+          `;
+        }).join("")}
       </div>
     `;
   }
@@ -778,47 +1140,57 @@
     const round = state.roundIndex + 1;
     const question = currentQuestion();
     const nextLabel = round === questions.length ? "See scores" : "Next round";
+    const phaseLabel = state.revealed ? "Revealed" : "Voting";
+    const connectionStatus = state.connectionMessage ? state.connectionMessage : "Ready";
     app.innerHTML = `
       <section class="screen teacher-screen">
-        <header class="game-header">
-          <div>
-            <p class="section-label">Teacher</p>
-            <h1>Round ${round} of ${questions.length}</h1>
+        <header class="live-topbar">
+          <div class="live-title">
+            <p class="section-label">Teacher live</p>
+            <h1>Round ${round} / ${questions.length}</h1>
+            <div class="progress live-progress" aria-label="Round ${round} of ${questions.length}">
+              ${renderProgressDots()}
+            </div>
           </div>
-          <div class="teacher-actions">
-            <button class="button button-light" type="button" data-action="restart">Restart game</button>
-            <button class="button button-light" type="button" data-action="new-session">New session</button>
+
+          <div class="live-metrics" aria-label="Live game status">
+            <span><em>Session</em><strong>${escapeHtml(state.sessionCode)}</strong></span>
+            <span><em>Students</em><strong>${playerCount()}</strong></span>
+            <span><em>Votes</em><strong>${voteCount()}</strong></span>
+            <span class="${state.connectionMessage ? "is-warning" : ""}"><em>${escapeHtml(connectionLabel())}</em><strong>${escapeHtml(connectionStatus)}</strong></span>
+          </div>
+
+          <div class="teacher-actions live-actions">
+            <button class="button button-light button-small" type="button" data-action="setup">Setup</button>
+            <button class="button button-light button-small" type="button" data-action="restart">Restart</button>
+            <button class="button button-light button-small" type="button" data-action="new-session">New session</button>
           </div>
         </header>
 
-        <div class="connection-strip ${state.connectionMessage ? "is-warning" : ""}">
-          <span>${escapeHtml(connectionLabel())}</span>
-          ${state.connectionMessage ? `<strong>${escapeHtml(state.connectionMessage)}</strong>` : `<strong>Ready</strong>`}
-        </div>
-
-        <div class="progress" aria-label="Round ${round} of ${questions.length}">
-          ${renderProgressDots()}
-        </div>
-
         <section class="teacher-grid">
           <div class="control-panel">
-            <button class="play-button" type="button" data-action="play" aria-label="Play sentence audio">
-              <span class="play-triangle" aria-hidden="true"></span>
-            </button>
+            <div class="panel-heading">
+              <h2>Controls</h2>
+              <span class="phase-pill">${phaseLabel}</span>
+            </div>
+            <div class="control-actions">
+              <button class="play-button" type="button" data-action="play" aria-label="Play sentence audio">
+                <span class="play-triangle" aria-hidden="true"></span>
+              </button>
+              <div class="button-row">
+                <button class="button button-light" type="button" data-action="reveal" ${state.revealed ? "disabled" : ""}>Reveal answer</button>
+                <button class="button button-primary" type="button" data-action="next" ${state.revealed ? "" : "disabled"}>${nextLabel}</button>
+              </div>
+            </div>
             <p class="audio-warning ${state.audioWarning ? "" : "is-empty"}">${state.audioWarning ? escapeHtml(state.audioWarning) : "Audio status"}</p>
-            <div class="round-status">
-              <span>${voteCount()} votes</span>
-              <span>${playerCount()} students</span>
-            </div>
-            <div class="button-row">
-              <button class="button button-light" type="button" data-action="reveal" ${state.revealed ? "disabled" : ""}>Reveal answer</button>
-              <button class="button button-primary" type="button" data-action="next" ${state.revealed ? "" : "disabled"}>${nextLabel}</button>
-            </div>
             ${state.revealed && question ? `<div class="sentence-reveal"><span>Sentence ${currentNumber()}</span><strong>${escapeHtml(question.sentence)}</strong></div>` : `<div class="sentence-reveal is-empty"><span>Sentence</span><strong>Answer hidden</strong></div>`}
           </div>
 
           <div class="chart-panel">
-            <h2>Votes</h2>
+            <div class="panel-heading chart-heading">
+              <h2>Votes</h2>
+              <span>${voteCount()} / ${playerCount()}</span>
+            </div>
             ${renderChart()}
           </div>
 
@@ -827,7 +1199,7 @@
               <h2>Students</h2>
               <button class="button button-light button-small" type="button" data-action="clear-students" ${playerCount() ? "" : "disabled"}>Clear all</button>
             </div>
-            ${renderStudentList()}
+            ${renderStudentList(true)}
           </div>
         </section>
       </section>

@@ -17,18 +17,22 @@ How to test on one computer
 5. On the teacher page, press Start Live Game.
 6. The teacher plays the audio.
 7. The student taps a number.
-8. The student confirms with the green OK button or changes with the red X button.
+8. The student confirms with the green tick button or changes with the red X button.
 9. The teacher screen shows the vote chart.
 10. The teacher reveals the answer and moves to the next round.
 11. After round 9, the teacher presses See scores.
 12. The teacher screen shows all learner scores.
 13. Each learner screen shows that learner's score.
 
+The student page is optimised for phone portrait use. After joining, learners see a compact score badge such as Score 3 / 9 during play and a larger final score at the end.
+
 Student names
 -------------
 The teacher page can remove one student name by clicking that name in the student list.
 
 Use Clear students to remove all stale names and votes from the current session.
+
+During a live round, the teacher page uses a compact dashboard with the round, session code, student count, vote count, controls, vote chart, and learner score/status list kept together for laptop classroom use.
 
 When the teacher removes a student, that student page returns to the join screen.
 They can enter their name again if they need to rejoin.
@@ -56,6 +60,8 @@ To use real phones, publish this folder through GitHub Pages or another static w
 
 The teacher opens teacher.html.
 Students open student.html with the session code in the address.
+The teacher setup screen also shows a QR code for the current student link.
+The QR code is generated in local browser JavaScript and does not use a third-party image service.
 
 For example:
 
